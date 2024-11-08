@@ -1,0 +1,6 @@
+name: goexpert-labs-cloudrun
+services:
+    cloudrun-weather:
+        ports:
+            - 8080:8080
+        image: gcr.io/goexpert-hrs/cloudrun-weather:latest
