@@ -12,6 +12,6 @@ func main() {
 	usecase := usecase.NewWeatherUsecase()
 	handler := handler.NewWeatherHandler(usecase)
 
-	r.GET("/weather/:zipcode", handler.Handle)
+	r.POST("/weather", handler.Handle)
 	r.Run(":8080")
 }

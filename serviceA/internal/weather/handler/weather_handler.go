@@ -4,10 +4,9 @@ import (
 	"errors"
 	"net/http"
 
+	apiErrors "github.com/felipehrs/goexpert-labs-otel-serciceA/errors"
 	"github.com/felipehrs/goexpert-labs-otel-serciceA/internal/weather/usecase"
 	"github.com/gin-gonic/gin"
-
-	apiErrors "github.com/felipehrs/goexpert-labs-otel-serciceA/errors"
 )
 
 type WeatherHandler interface {
@@ -23,9 +22,15 @@ func NewWeatherHandler(usecase usecase.WeatherUsecase) WeatherHandler {
 }
 
 func (w *weatherHandler) Handle(ctx *gin.Context) {
-	zipCode := ctx.Param("zipcode")
 
-	weather, err := w.usecase.GetWeatherByCep(zipCode)
+	var input usecase.ZipCodeInput
+
+	if err := ctx.ShouldBindJSON(&input); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	weather, err := w.usecase.GetWeatherByCep(input.ZipCode)
 
 	if errors.Is(err, apiErrors.InvalidZipCode) {
 		ctx.JSON(http.StatusUnprocessableEntity, gin.H{"error": apiErrors.InvalidZipCode.Error()})
