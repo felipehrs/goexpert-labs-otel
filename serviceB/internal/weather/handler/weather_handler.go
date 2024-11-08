@@ -25,7 +25,7 @@ func NewWeatherHandler(usecase usecase.WeatherUsecase) WeatherHandler {
 func (w *weatherHandler) Handle(ctx *gin.Context) {
 	zipCode := ctx.Param("zipcode")
 
-	weather, err := w.usecase.GetWeatherByCep(zipCode)
+	weather, err := w.usecase.GetWeatherByCep(ctx, zipCode)
 
 	if errors.Is(err, apiErrors.InvalidZipCode) {
 		ctx.JSON(http.StatusUnprocessableEntity, gin.H{"error": apiErrors.InvalidZipCode.Error()})

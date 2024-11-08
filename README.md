@@ -53,3 +53,20 @@ Após a implementação dos serviços, adicione a implementação do OTEL + Zipk
 *   O código-fonte completo da implementação.
 *   Documentação explicando como rodar o projeto em ambiente dev.
 *   Utilize docker/docker-compose para que possamos realizar os testes de sua aplicação.
+
+# Documentação
+
+Para rodar o sistema em modo **desenvolvimento** rodar o comando `docker compose up --build`
+
+Realizar as requests conforme o arquivo [requests.http](./tests/requests.http)
+
+```
+POST http://localhost:8080/weather
+Content-Type: application/json
+
+{
+  "cep": "89201440"
+}
+```
+
+O zipkin esta rodando no endereço: `http://localhost:9411`

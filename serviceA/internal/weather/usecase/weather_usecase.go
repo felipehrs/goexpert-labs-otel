@@ -44,7 +44,7 @@ func (w *weatherUsecase) GetWeatherByCep(zipCode string) (WeatherResponse, error
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
 
-	url := fmt.Sprintf("http://localhost:8080/weather/%s", zipCode)
+	url := fmt.Sprintf("http://service_b:8081/weather/%s", zipCode)
 
 	resp, err := client.Get(url)
 

@@ -9,10 +9,12 @@ import (
 
 	apiErrors "github.com/felipehrs/goexpert-labs-otel-serciceB/errors"
 	pkg "github.com/felipehrs/goexpert-labs-otel-serciceB/pkg"
+	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/otel"
 )
 
 type WeatherUsecase interface {
-	GetWeatherByCep(zipcode string) (WeatherResponse, error)
+	GetWeatherByCep(c *gin.Context, zipcode string) (WeatherResponse, error)
 }
 
 type weatherUsecase struct {
@@ -44,7 +46,7 @@ func NewWeatherUsecase() WeatherUsecase {
 	return &weatherUsecase{}
 }
 
-func (w *weatherUsecase) GetWeatherByCep(zipCode string) (WeatherResponse, error) {
+func (w *weatherUsecase) GetWeatherByCep(c *gin.Context, zipCode string) (WeatherResponse, error) {
 	if zipCode == "" {
 		return WeatherResponse{}, apiErrors.InvalidZipCode
 	}
@@ -52,6 +54,11 @@ func (w *weatherUsecase) GetWeatherByCep(zipCode string) (WeatherResponse, error
 	if !pkg.IsValidZipCode(zipCode) {
 		return WeatherResponse{}, apiErrors.InvalidZipCode
 	}
+
+	ctx := c.Request.Context()
+	tracer := otel.Tracer("weatherUsecase.GetWeatherByCep")
+	ctx, span := tracer.Start(ctx, "CEP_REQUEST")
+	defer span.End()
 
 	viaCepResponse, err := w.doViaCepRequest(zipCode)
 	if errors.Is(err, apiErrors.NotFoundZipCode) {
@@ -61,6 +68,10 @@ func (w *weatherUsecase) GetWeatherByCep(zipCode string) (WeatherResponse, error
 	if err != nil {
 		return WeatherResponse{}, apiErrors.UnableToRetrieveZipCode
 	}
+
+	tracer = otel.Tracer("weatherUsecase.GetWeatherByCep")
+	_, span = tracer.Start(ctx, "WEATHER_REQUEST")
+	defer span.End()
 
 	weatherApiResponse, err := w.doWeatherRequest(viaCepResponse.Localidade)
 	if err != nil {

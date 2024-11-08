@@ -1,12 +1,4 @@
 services:
-  jaeger-all-in-one:
-    image: jaegertracing/all-in-one:latest
-    restart: always
-    ports:
-      - "16686:16686"
-      - "14268"
-      - "14250"
-
   otel-collector:
     image: otel/opentelemetry-collector:latest
     restart: always
@@ -18,3 +10,28 @@ services:
       - "13133:13133" # health_check extension
       - "4317:4317"   # OTLP gRPC receiver
       - "45679:45679" # zpages extension
+  
+  zipkin:
+    image: openzipkin/zipkin
+    ports:
+      - "9411:9411"
+
+  service_a:
+    build:
+      context: ./serviceA
+      dockerfile: ./Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - zipkin
+      - otel-collector
+
+  service_b:
+    build:
+      context: ./serviceB
+      dockerfile: ./Dockerfile
+    ports:
+      - "8081:8081"
+    depends_on:
+      - zipkin
+      - otel-collector

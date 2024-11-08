@@ -13,54 +13,40 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/exporters/zipkin"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.23.0"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
-func initProvider(serviceName, collectorURL string) (func(context.Context) error, error) {
+func initProvider(serviceName, collectorURL string, zipkinURL string) (func(context.Context) error, error) {
 	ctx := context.Background()
+	client := otlptracehttp.NewClient(otlptracehttp.WithEndpoint(collectorURL), otlptracehttp.WithInsecure())
+	exporter, err := otlptrace.New(ctx, client)
 
-	res, err := resource.New(ctx,
-		resource.WithAttributes(
-			semconv.ServiceName(serviceName),
-		),
-	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create resource: %w", err)
+		return nil, fmt.Errorf("failed to create exporter: %v", err)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
-	defer cancel()
-	conn, err := grpc.DialContext(ctx, collectorURL,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
-	)
+	zipkinExporter, err := zipkin.New(zipkinURL + "/api/v2/spans")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create gRPC connection to collector: %w serviceName %s, collectorURL %s", err, serviceName, collectorURL)
+		return nil, fmt.Errorf("failed to create zipkin exporter: %v", err)
 	}
 
-	traceExporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create trace exporter: %w", err)
-	}
-
-	bsp := sdktrace.NewBatchSpanProcessor(traceExporter)
-	tracerProvider := sdktrace.NewTracerProvider(
-		sdktrace.WithSampler(sdktrace.AlwaysSample()),
-		sdktrace.WithResource(res),
-		sdktrace.WithSpanProcessor(bsp),
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithBatcher(zipkinExporter),
+		sdktrace.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String(serviceName),
+		)),
 	)
-	otel.SetTracerProvider(tracerProvider)
+	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(propagation.TraceContext{})
-
-	otel.SetTextMapPropagator(propagation.TraceContext{})
-
-	return tracerProvider.Shutdown, nil
+	return tp.Shutdown, nil
 }
 
 func main() {
@@ -70,7 +56,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	shutdown, err := initProvider("SERVICE_A", "otel-collector:4317")
+	shutdown, err := initProvider("SERVICE_A", "otel-collector:4317", "http://zipkin:9411")
 	if err != nil {
 		log.Fatal(err)
 	}
