@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 
 	apiErrors "github.com/felipehrs/goexpert-labs-otel-serciceA/errors"
 	"github.com/felipehrs/goexpert-labs-otel-serciceA/pkg"
@@ -44,7 +45,12 @@ func (w *weatherUsecase) GetWeatherByCep(zipCode string) (WeatherResponse, error
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
 
-	url := fmt.Sprintf("http://service_b:8081/weather/%s", zipCode)
+	serviceBURL := os.Getenv("SERVICE_B_URL")
+	if serviceBURL == "" {
+		serviceBURL = "http://service_b:8081"
+	}
+
+	url := fmt.Sprintf("%s/weather/%s", serviceBURL, zipCode)
 
 	resp, err := client.Get(url)
 

@@ -4,8 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"golang.org/x/text/runes"
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
 	"io"
 	"net/http"
+	"net/url"
+	"unicode"
 
 	apiErrors "github.com/felipehrs/goexpert-labs-otel-serciceB/errors"
 	pkg "github.com/felipehrs/goexpert-labs-otel-serciceB/pkg"
@@ -110,7 +115,11 @@ func (w *weatherUsecase) doViaCepRequest(zipCode string) (ViaCepResponse, error)
 
 func (w *weatherUsecase) doWeatherRequest(city string) (OpenWeatherResponse, error) {
 	apiKey := "5903bf6c2eb54a7f863170134240311"
-	url := fmt.Sprintf("https://api.weatherapi.com/v1/current.json?key=%s&q=%s&aqi=no", apiKey, city)
+
+	t := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+	result, _, _ := transform.String(t, city)
+
+	url := fmt.Sprintf("https://api.weatherapi.com/v1/current.json?key=%s&q=%s&aqi=no", apiKey, url.QueryEscape(result))
 
 	resp, err := http.Get(url)
 

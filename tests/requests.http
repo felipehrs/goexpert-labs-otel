@@ -8,3 +8,12 @@ Content-Type: application/json
 {
   "cep": "89201440"
 }
+
+###
+
+POST http://localhost:8080/weather
+Content-Type: application/json
+
+{
+  "cep": "89240000"
+}
